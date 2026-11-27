@@ -172,6 +172,30 @@
   .back-btn:active{box-shadow:var(--sh-press)}
   #frameView .panel,#sizeView .panel,#collageView .panel,#singleView .panel,#babiesView .panel,#catView .panel{margin-top:14px}
 
+  /* ---------- Sticky view header — Back + title stay reachable however
+     far a long gift list scrolls (the app bar above it is 83px tall) ---------- */
+  .view-topbar{
+    position:sticky;top:82px;z-index:50;
+    display:flex;align-items:center;gap:12px;
+    margin-top:20px;padding:9px 10px;
+    background:linear-gradient(180deg, rgba(23,10,48,.97), rgba(23,10,48,.93));
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 12px 26px rgba(3,1,10,.5);
+  }
+  .view-topbar .back-btn{margin-top:0;flex:none}
+  .view-topbar-title{
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:16.5px;color:#fff;line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .view-topbar .sec-title{font-size:18.5px;margin:0;line-height:1.2}
+  #catView .view-topbar{margin:14px 14px 0}
+  @media (max-width:400px){ .view-topbar{top:72px} }
+  @media (min-width:1024px){
+    .view-topbar{top:98px}
+    #catView .view-topbar{margin:20px 0 0}
+  }
+
   /* ---------- Photo Frame Zone (view) ---------- */
   .fz-banner{
     border-radius:var(--r-md);padding:24px 18px;text-align:center;margin-bottom:18px;
@@ -772,7 +796,7 @@
 
   <!-- ===== Photo Frame Zone — its own view, opened from the hero button / Frames tab ===== -->
   <div class="view" id="frameView" hidden>
-    <button class="back-btn" type="button" data-goto="mainView">&#8592; Back to Shop</button>
+    <div class="view-topbar"><button class="back-btn" type="button" data-goto="mainView">&#8592; Back to Shop</button><span class="view-topbar-title">Photo Frame Zone</span></div>
     <div class="panel">
       <div class="fz-banner">
         <div class="fz-kick">PHOTO FRAME ZONE</div>
@@ -838,7 +862,7 @@
 
   <!-- ===== Frame Size Comparison — sub-view of the Frame Zone ===== -->
   <div class="view" id="sizeView" hidden>
-    <button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button>
+    <div class="view-topbar"><button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button><span class="view-topbar-title">Frame Size Comparison</span></div>
     <div class="panel">
       <div class="kick">Which size suits your wall?</div>
       <h2 class="sec-title">Frame Size <span class="o">Comparison</span></h2>
@@ -851,7 +875,7 @@
 
   <!-- ===== Collage Designs Gallery — sub-view of the Frame Zone ===== -->
   <div class="view" id="collageView" hidden>
-    <button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button>
+    <div class="view-topbar"><button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button><span class="view-topbar-title">Collage Designs Gallery</span></div>
     <div class="panel">
       <div class="kick">Multi-photo designs</div>
       <h2 class="sec-title">Collage Designs <span class="o">Gallery</span></h2>
@@ -862,7 +886,7 @@
 
   <!-- ===== Single Photo Designs Gallery — sub-view of the Frame Zone ===== -->
   <div class="view" id="singleView" hidden>
-    <button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button>
+    <div class="view-topbar"><button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button><span class="view-topbar-title">Single Photo Designs Gallery</span></div>
     <div class="panel">
       <div class="kick">One photo, beautifully edited</div>
       <h2 class="sec-title">Single Photo Designs <span class="o">Gallery</span></h2>
@@ -873,7 +897,7 @@
 
   <!-- ===== Baby Designs Gallery — sub-view of the Frame Zone ===== -->
   <div class="view" id="babiesView" hidden>
-    <button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button>
+    <div class="view-topbar"><button class="back-btn" type="button" data-goto="frameView">&#8592; Photo Frame Zone</button><span class="view-topbar-title">Baby Designs Gallery</span></div>
     <div class="panel">
       <div class="kick">For your little ones</div>
       <h2 class="sec-title">Baby Designs <span class="o">Gallery</span></h2>
@@ -885,9 +909,11 @@
 
 <!-- ===== Category page — opened by tapping a category tile or All Gifts ===== -->
 <div class="view" id="catView" hidden>
-  <button class="back-btn" type="button" data-goto="mainView">&#8592; Back to Shop</button>
-  <div class="panel">
+  <div class="view-topbar">
+    <button class="back-btn" type="button" data-goto="mainView">&#8592; Back to Shop</button>
     <h2 class="sec-title" id="catTitle">All Gifts</h2>
+  </div>
+  <div class="panel">
     <div class="cat-tools">
       <div class="sort-wrap sel-wrap">
         <select id="catSort" aria-label="Sort gifts in this category">
@@ -1076,6 +1102,79 @@
   }
 })();
 
+/* ============ History navigation — phone / browser Back steps back inside the store ============
+   Opening a full-screen view or a popup pushes a history state, so the
+   phone/browser Back button closes the popup first, then steps the view
+   back (sub-view → parent view → Home) instead of leaving the site.
+   In-page back buttons call history.back() too, so both back methods
+   behave identically. The initial load only replaceState()s its own
+   entry — nothing is trapped: Back from Home itself leaves normally. */
+var UVNav = (function(){
+  var base = { uv:1, view:'mainView', modal:null, extra:null, d:0 };
+  var current = base;
+  var depth = 0;
+  var appliedView = 'mainView';
+  var suppress = false;
+  var openers = {}, closers = {};
+  try { history.replaceState(base, ''); } catch (e) {}
+  function push(view, modal, extra){
+    depth++;
+    current = { uv:1, view:view, modal:modal, extra:extra || null, d:depth };
+    try { history.pushState(current, ''); } catch (e) {}
+  }
+  function isOpen(id){ var el = document.getElementById(id); return !!(el && el.classList.contains('open')); }
+  function applyState(s){
+    if (s.view !== appliedView){
+      appliedView = s.view;
+      if (window.UVapplyView) window.UVapplyView(s.view);
+    }
+    for (var id in closers){
+      if (id !== s.modal && isOpen(id)) closers[id]();
+    }
+    if (s.modal && openers[s.modal] && !isOpen(s.modal)) openers[s.modal](s.extra);
+  }
+  window.addEventListener('popstate', function(e){
+    if (suppress){ suppress = false; return; }
+    var s = e.state;
+    if (!s || !s.uv) s = base; /* anchor/hash entries mean Home, no popup */
+    current = s;
+    depth = s.d || 0;
+    applyState(s);
+  });
+  return {
+    registerModal: function(id, openFn, closeFn){ openers[id] = openFn; closers[id] = closeFn; },
+    viewOpened: function(id){
+      appliedView = id;
+      if (current.view === id && !current.modal) return;
+      push(id, null, null);
+    },
+    modalOpened: function(id, extra){
+      if (current.modal === id) return;
+      push(current.view, id, extra);
+    },
+    requestModalClose: function(id){
+      if (current.modal === id && depth > 0){ history.back(); return true; }
+      return false;
+    },
+    backTo: function(target){
+      if (!current.modal && depth > 0 && current.view !== target){ history.back(); return true; }
+      return false;
+    },
+    setViewDirect: function(id){
+      appliedView = id;
+      depth = 0;
+      current = { uv:1, view:id, modal:null, extra:null, d:0 };
+      try { history.replaceState(current, ''); } catch (e) {}
+    },
+    goHomeDirect: function(){
+      appliedView = 'mainView';
+      if (depth > 0){ suppress = true; try { history.go(-depth); } catch (e) {} }
+      depth = 0;
+      current = base;
+    }
+  };
+})();
+
 /* ============ Help Desk popup — open / close ============ */
 (function(){
   var modal = document.getElementById('helpModal');
@@ -1091,17 +1190,26 @@
     var p = vid.play(); if (p && p.catch) p.catch(function(){});
   }
   if (vid) vid.addEventListener('canplay', function(){ if (modal.classList.contains('open')) playVid(); });
-  function open(){
+  function openDirect(){
     modal.classList.add('open');
     document.body.classList.add('no-scroll');
     playVid();
     if (closeBtn) closeBtn.focus();
   }
-  function close(){
+  function open(){
+    openDirect();
+    if (window.UVNav) UVNav.modalOpened('helpModal');
+  }
+  function closeDirect(){
     modal.classList.remove('open');
     document.body.classList.remove('no-scroll');
     if (vid) vid.pause();
   }
+  function close(){
+    if (window.UVNav && UVNav.requestModalClose('helpModal')) return;
+    closeDirect();
+  }
+  if (window.UVNav) UVNav.registerModal('helpModal', openDirect, closeDirect);
   Array.prototype.forEach.call(document.querySelectorAll('.open-help'), function(el){
     el.addEventListener('click', function(e){ e.preventDefault(); open(); });
   });
@@ -1116,7 +1224,9 @@
 /* ============ Page views — main shop vs Frame Zone & its sub-views ============ */
 var UVshowView = (function(){
   var IDS = ['mainView','frameView','sizeView','collageView','singleView','babiesView','catView'];
-  function show(id){
+  /* Direct switch with no history change — UVNav's popstate handler uses
+     this to restore whatever view the history state names. */
+  function applyView(id){
     IDS.forEach(function(v){ var el = document.getElementById(v); if (el) el.hidden = (v !== id); });
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
       t.classList.toggle('on', id === 'mainView' ? t.getAttribute('data-sec') === 'top' : (id === 'catView' ? t.getAttribute('data-sec') === 'gifts' : t.getAttribute('data-sec') === 'frames'));
@@ -1124,8 +1234,28 @@ var UVshowView = (function(){
     window.scrollTo(0, 0);
     if (id === 'frameView' && window.UVframeFit) window.UVframeFit();
   }
+  window.UVapplyView = applyView;
+  /* Forward navigation: switch the view and push a history state, so the
+     phone/browser Back button can step back out of it. */
+  function show(id){
+    if (id === 'mainView'){
+      if (window.UVNav && UVNav.backTo('mainView')) return;
+      applyView('mainView');
+      if (window.UVNav) UVNav.setViewDirect('mainView');
+      return;
+    }
+    applyView(id);
+    if (window.UVNav) UVNav.viewOpened(id);
+  }
   Array.prototype.forEach.call(document.querySelectorAll('[data-goto]'), function(el){
-    el.addEventListener('click', function(){ show(el.getAttribute('data-goto')); });
+    el.addEventListener('click', function(){
+      var target = el.getAttribute('data-goto');
+      /* In-page back buttons take the same history path as the phone's
+         Back button, so the two always behave identically. */
+      if (el.classList.contains('back-btn') && window.UVNav && UVNav.backTo(target)) return;
+      if (el.classList.contains('back-btn')) { applyView(target); if (window.UVNav) UVNav.setViewDirect(target); return; }
+      show(target);
+    });
   });
   Array.prototype.forEach.call(document.querySelectorAll('.open-framezone'), function(el){
     el.addEventListener('click', function(e){ e.preventDefault(); show('frameView'); });
@@ -1136,6 +1266,7 @@ var UVshowView = (function(){
     if (t.classList.contains('open-framezone')) return;
     t.addEventListener('click', function(){
       IDS.forEach(function(v){ var el = document.getElementById(v); if (el) el.hidden = (v !== 'mainView'); });
+      if (window.UVNav) UVNav.goHomeDirect();
     });
   });
   return show;
@@ -1236,18 +1367,29 @@ var UVshowView = (function(){
   var gCode = document.getElementById('galCode');
   var gOrder = document.getElementById('galOrder');
   function pad(n){ return (n < 10 ? '0' : '') + n; }
-  function openGal(src, code){
+  function openGalDirect(src, code){
     gImg.src = src;
     gCode.textContent = code;
     gOrder.href = 'https://wa.me/917010744548?text=' + encodeURIComponent('Hi UV Studio! I want this photo design: ' + code);
     modal.classList.add('open');
     document.body.classList.add('no-scroll');
   }
-  function closeGal(){
+  function closeGalDirect(){
     modal.classList.remove('open');
     document.body.classList.remove('no-scroll');
     gImg.removeAttribute('src');
   }
+  function openGal(src, code){
+    openGalDirect(src, code);
+    if (window.UVNav) UVNav.modalOpened('galModal', { src: src, code: code });
+  }
+  function closeGal(){
+    if (window.UVNav && UVNav.requestModalClose('galModal')) return;
+    closeGalDirect();
+  }
+  if (window.UVNav) UVNav.registerModal('galModal', function(extra){
+    if (extra && extra.src) openGalDirect(extra.src, extra.code);
+  }, closeGalDirect);
   GALS.forEach(function(g){
     var grid = document.getElementById(g.grid);
     if (!grid) return;
@@ -1464,7 +1606,7 @@ var CATALOG = {"cats":["Mugs & Cups","Hand Craft Gifts","More Gifts","Bottles & 
   /* ----- Product popup ----- */
   var modal = document.getElementById('prodModal');
   var card = modal.querySelector('.modal-card');
-  function openProd(idx){
+  function openProdDirect(idx){
     var p = CATALOG.prods[idx];
     if (!p) return;
     document.getElementById('prodMedia').innerHTML = p.img
@@ -1485,10 +1627,21 @@ var CATALOG = {"cats":["Mugs & Cups","Hand Craft Gifts","More Gifts","Bottles & 
     if (card) card.scrollTop = 0;
     modal.querySelector('.modal-close').focus();
   }
-  function closeProd(){
+  function closeProdDirect(){
     modal.classList.remove('open');
     document.body.classList.remove('no-scroll');
   }
+  function openProd(idx){
+    openProdDirect(idx);
+    if (window.UVNav) UVNav.modalOpened('prodModal', { prod: idx });
+  }
+  function closeProd(){
+    if (window.UVNav && UVNav.requestModalClose('prodModal')) return;
+    closeProdDirect();
+  }
+  if (window.UVNav) UVNav.registerModal('prodModal', function(extra){
+    if (extra && typeof extra.prod === 'number') openProdDirect(extra.prod);
+  }, closeProdDirect);
   Array.prototype.forEach.call(modal.querySelectorAll('[data-close-prod]'), function(el){
     el.addEventListener('click', closeProd);
   });
@@ -1615,6 +1768,7 @@ var QA = [{"category":"Photography","service":"General","question":"What photogr
     if (a.classList.contains('open-framezone') || a.classList.contains('open-help')) return;
     a.addEventListener('click', function(){
       IDS.forEach(function(v){ var el = document.getElementById(v); if (el) el.hidden = (v !== 'mainView'); });
+      if (window.UVNav) UVNav.goHomeDirect();
     });
   });
 })();
